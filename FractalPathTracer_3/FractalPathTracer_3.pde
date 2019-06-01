@@ -22,10 +22,6 @@ float focalLength = 1.586674;
 float focalDistance = 2.2591374;
 float aperture = 0.03;
 
-//for better results under strong lights, raise this value
-//twice as many spp per frame -> same speed but half the FPS, so don't go crazy :)
-int sppPerFrame = 2;
-
 int spp;
 ArrayList<Light> lights = new ArrayList<Light>();
 PShader pathTracer;
@@ -35,13 +31,12 @@ boolean left, right, forward, backward, up, down;
 void setup() {
   //twice as many pixels -> twice as slow, don't go crazy on the resolution
   size(720, 405, P2D);
-  pathTracer = loadShader("/shaders/fragment.glsl", "/shaders/vertex.glsl");
+  pathTracer = loadShader("/shaders/fragment.glsl");
   
   lights.add(new Light(new PVector(1.2, .6, 1.2), color(50, 100, 255), 7, .0));
   lights.add(new Light(new PVector(1, 1, -1), color(255, 100, 50), 7, .1));
   
   pathTracer.set("hdri", loadImage("hdri.png"));
-  pathTracer.set("sppPerFrame", sppPerFrame);
   pathTracer.set("lightPositions", getLightPositions(), 3);
   pathTracer.set("lightColors", getLightColors(), 3);
   pathTracer.set("lightRadii", getLightRadii());
@@ -50,25 +45,15 @@ void setup() {
 void draw() {
   
   move();
-  spp += sppPerFrame;
-  pathTracer.set("width", width);
-  pathTracer.set("height", height);
+  spp ++;
   pathTracer.set("posCam", pos);
   pathTracer.set("dirCam", dir);
   pathTracer.set("focalLength", focalLength);
   pathTracer.set("focalDistance", focalDistance);
   pathTracer.set("aperture", aperture);
-  pathTracer.set("alpha", (float)sppPerFrame/spp);
-  pathTracer.set("noiseSeed", spp);
+  pathTracer.set("spp", spp);
   
-  //drawing a rectangle over the canvas
-  shader(pathTracer);
-  beginShape(QUADS);
-  vertex(-1, -1);
-  vertex(width+1, -1);
-  vertex(width+1, height+1);
-  vertex(-1, height+1);
-  endShape();
+  filter(pathTracer);
   
   println("\n\n\n\n");
   println("pos : " + pos);

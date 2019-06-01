@@ -2,6 +2,15 @@
 This shader is mostly based on this article by Mikael Hvidtfeldt Christensen:
 http://blog.hvidtfeldts.net/index.php/2015/01/path-tracing-3d-fractals/
 */
+#ifdef GL_ES
+precision mediump float;
+precision mediump int;
+#endif
+
+#define PROCESSING_TEXTURE_SHADER
+
+uniform sampler2D texture;
+uniform vec2 resolution;
 
 #define Pi 3.14159265359
 #define MaxSteps 500
@@ -15,18 +24,13 @@ http://blog.hvidtfeldts.net/index.php/2015/01/path-tracing-3d-fractals/
 #define Bailout 10.0
 #define Power 8.0
 
-uniform int width;
-uniform int height;
-
 uniform vec3 posCam;
 uniform vec3 dirCam;
 uniform float focalLength;
 uniform float focalDistance;
 uniform float aperture;
 
-uniform float alpha;
-uniform int noiseSeed;
-uniform int sppPerFrame;
+uniform int spp;
 uniform sampler2D hdri;
 
 const int maxLightAmount = 8;
@@ -104,8 +108,8 @@ bool trace(inout vec3 pos, in vec3 dir, out vec3 normal){
   for(int i = 0; i < MaxSteps; i++){
     float dist = distanceEstimation(pos);
     if(dist < MinDist) break;
-    if(length(pos-posCam) > MaxDist) return false;
     pos += dir * StepFactor * dist;
+    if(length(pos-posCam) > MaxDist) return false;
   }
   normal = normalEstimation(pos);
   return true;
@@ -162,7 +166,7 @@ vec3 rayColor(vec3 pos, vec3 dir){
 
 vec3 sampleRay(){
 
-  vec2 coords = (gl_FragCoord.xy - vec2(width+randomFloat(), height+randomFloat())/2.0) / height;
+  vec2 coords = (gl_FragCoord.xy - (resolution + vec2(randomFloat(), randomFloat()))/2.0) / resolution.y;
 
   vec3 camX = vec3(-dirCam.y, dirCam.x, 0);
 	vec3 camY = cross(camX, dirCam);
@@ -188,14 +192,9 @@ vec3 sampleRay(){
 
 
 void main() {
+  seed = gl_FragCoord.xy / resolution + vec2(spp);
 
-  seed = gl_FragCoord.xy / vec2(width, height) + vec2(noiseSeed);
+  vec3 previousColor = texture2D(texture, gl_FragCoord.xy / resolution).rgb * (spp-1.0);
 
-  vec3 finalColor;
-  for(int i = 0; i < sppPerFrame; i++){
-    finalColor += sampleRay();
-  }
-  finalColor /= sppPerFrame;
-
-	gl_FragColor = vec4(finalColor, alpha);
+	gl_FragColor = vec4((previousColor + sampleRay()) / spp, 1.0);
 }
