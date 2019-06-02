@@ -21,9 +21,16 @@ PVector dir = new PVector(-0.9444748, 0.25003102, 0.21319441).normalize();
 float focalLength = 1.586674;
 float focalDistance = 2.2591374;
 float aperture = 0.03;
+float shutter = 1.0/1.0;
+
+PVector previousPos = pos.copy();
+PVector previousDir = dir.copy();
+float previousFocalLength = focalLength;
 
 int spp;
+int savedFrames;
 ArrayList<Light> lights = new ArrayList<Light>();
+float[] fractalParameters = new float[3];
 PShader pathTracer;
 boolean left, right, forward, backward, up, down;
 
@@ -31,36 +38,59 @@ boolean left, right, forward, backward, up, down;
 void setup() {
   //twice as many pixels -> twice as slow, don't go crazy on the resolution
   size(720, 405, P2D);
-  pathTracer = loadShader("/shaders/fragment.glsl");
+  
+  pathTracer = loadShader("/shaders/pathTracer.glsl");
   
   lights.add(new Light(new PVector(1.2, .6, 1.2), color(50, 100, 255), 7, .0));
   lights.add(new Light(new PVector(1, 1, -1), color(255, 100, 50), 7, .1));
   
   pathTracer.set("hdri", loadImage("hdri.png"));
-  pathTracer.set("lightPositions", getLightPositions(), 3);
-  pathTracer.set("lightColors", getLightColors(), 3);
-  pathTracer.set("lightRadii", getLightRadii());
 }
 
 void draw() {
   
+  if(previousPos.copy().sub(pos).magSq() != 0){
+    previousPos.set(pos);
+    reset();
+  }
+  
   move();
+  
   spp ++;
   pathTracer.set("posCam", pos);
+  pathTracer.set("previousPosCam", previousPos);
   pathTracer.set("dirCam", dir);
+  pathTracer.set("previousDirCam", previousDir);
   pathTracer.set("focalLength", focalLength);
+  pathTracer.set("previousFocalLength", previousFocalLength);
   pathTracer.set("focalDistance", focalDistance);
   pathTracer.set("aperture", aperture);
+  pathTracer.set("shutter", shutter);
+  
   pathTracer.set("spp", spp);
+  pathTracer.set("fractalParameters", fractalParameters);
+  pathTracer.set("lightPositions", getLightPositions(), 3);
+  pathTracer.set("lightColors", getLightColors(), 3);
+  pathTracer.set("lightRadii", getLightRadii());
   
   filter(pathTracer);
   
-  println("\n\n\n\n");
+  if(previousDir.copy().sub(dir).magSq() != 0){
+    previousDir.set(dir);
+    reset();
+  }
+  if(previousFocalLength != focalLength){
+    previousFocalLength = focalLength;
+    reset();
+  }
+  
+  println("\n\n");
   println("pos : " + pos);
   println("dir : " + dir);
   println("focalLength : " + focalLength);
   println("focalDistance : " + focalDistance);
   println("aperture : " + aperture);
+  println("frameRate : " + frameRate);
 }
 
 void reset(){
@@ -98,6 +128,9 @@ void mouseWheel(MouseEvent e) {
   
   if      (keyPressed && key == focusKey) focalDistance *= pow(.97, count);
   else if (keyPressed && key == apertureKey) aperture *= pow(.95, count);
+  else if (keyPressed && (key == '1' || key == '&')) fractalParameters[0] += .01 * count;
+  else if (keyPressed && (key == '2' || key == 'é')) fractalParameters[1] += .01 * count;
+  else if (keyPressed && (key == '3' || key == '"')) fractalParameters[2] += .01 * count;
   else focalLength *= pow(.95, count);
   reset();
 }
